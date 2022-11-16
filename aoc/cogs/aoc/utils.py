@@ -1,15 +1,12 @@
-import ast
 from datetime import datetime, timedelta
-from enum import Enum, auto
 from typing import Any, Dict, List, Optional, TypedDict
 
 import aiohttp
-from dateutil.parser import isoparse
 from discord import Color
 
 from aoc.utils.objects import Singleton
 
-from .config import ORGANIZATION, g, headers
+from .config import ORGANIZATION, headers
 
 AOC_COLOR = Color.from_rgb(255, 0, 149)
 
@@ -28,7 +25,6 @@ class AocContributor(TypedDict):
     avatar_url: str
     total_pulls: Optional[int]
     bio: Optional[str]
-    # merged_pulls: Optional[int]
 
 class PartialContributor(TypedDict):
     name: str
@@ -38,6 +34,7 @@ class PartialContributor(TypedDict):
 
 class AocContributorMini(TypedDict):
     github: str
+
 
 class RequesterCachedAttribute(TypedDict):
     cached_at: datetime
@@ -49,34 +46,14 @@ class Requester(Singleton):
     _cache: Dict[str, RequesterCachedAttribute] = {}
     _cache_team: Dict[str, RequesterCachedAttribute] = {}
 
-    async def get_user_status(self, user):
-        print("-------------------------------------------------------------------------------")
-        return g.search_issues(query=f"is:pull-request author:{user} org:{ORGANIZATION}").totalCount
-
-    async def get_list(self):
-        contributors = dict()
-        org = await g.get_organization(ORGANIZATION)
-        repos = await org.get_repos()
-        for repo in repos:
-            prs = await repo.get_pulls(state="closed")
-            for pr in prs:
-                if pr.is_merged():
-                    user = pr.user.login
-                    contributors[user] = contributors.get(user, 0) + 1
-
-        contributors = sorted(contributors.items(), key = lambda x : x[0].lower())
-        contributors = sorted(contributors, key= lambda x : x[1], reverse=True)
-        res = ""
-        for key, value in contributors:
-            res += f"{key} - {value}\n"
-        return contributors
-
+    
     async def _make_request(self, url: str):
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers) as response:
                 if response.status != 200:
                     raise ResponseError(response.status)
                 return await response.json()
+
 
     def _allow_cache_use(self, entry_name: str) -> bool:
         if not self._cache.get(entry_name):
@@ -137,8 +114,9 @@ class Requester(Singleton):
             total_pulls=count,
             bio=contrib["bio"],
         )
+
+
     async def fetch_contributors_mini(self) -> List[AocContributorMini]:
-        # I do not think that we would get much of a performance benefit from this but leaving it here all the same
         if self._allow_cache_use("contributors_mini"):
             return self._cache["contributors_mini"]["data"]
 

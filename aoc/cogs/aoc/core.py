@@ -5,7 +5,6 @@ from typing import List, TypedDict
 import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
-from rapidfuzz import process
 
 from aoc.cogs.aoc.utils import Requester
 from aoc.main import AocBot
@@ -119,7 +118,7 @@ class Aoc(commands.Cog):
     @app_commands.command()
     async def hero(self, interaction: discord.Interaction, *, hero: str):
         """
-        Show the details of an hero that have contributed to Novu.
+        Show the details of the hero who have contributed to AOC.
         """
         await interaction.response.defer()
 
@@ -150,7 +149,7 @@ class Aoc(commands.Cog):
                 )
             else:
                 await interaction.followup.send(
-                    f"An unexpected error happened with the HackSquad API: Status code: {error.original.code}"
+                    f"An unexpected error happened with the GitHub API: Status code: {error.original.code}"
                 )
             return
         logging.exception(error)
