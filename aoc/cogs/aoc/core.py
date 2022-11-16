@@ -10,26 +10,18 @@ from rapidfuzz import process
 from aoc.cogs.aoc.utils import Requester
 from aoc.main import AocBot
 
-from .utils import HACKSQUAD_COLOR, AocContributor, Requester, ResponseError
+from .utils import AOC_COLOR, AocContributor, Requester, ResponseError
 
 SOME_RANDOM_ASS_QUOTES = [
     "Seriously... If you're gonna win, can you... give me one of your shirt?",
-    "Hacktoberfest's nice. Hacksquad's better.",
     "I like #memes. No seriously, it's too good.",
     "btw i use arch",
     "Wait. Open Source is just for the free T-shirt? Always has been.",
-    "I'm number #0 in the leaderboard bro! Who can win against me, the great HackSquad bot??",
-    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    "E.",
+    "I'm number #0 in the leaderboard bro! Who can win against me, the great AOC bot??",
     "I see no God up here. OTHER THAN ME!",
     "I have no idea what I'm doing...",
     "I am a NFT.",
-    'Why is this variable called "SOME_RANDOM_ASS_QUOTES"? I\'m legit NOT LYING!',
     "What a Wonderful World",
-    "Nevo David is awesome, don't you think?",
-    "Thank you, Nevo David, HellFire, sravan, Santosh, Midka, and Capt. Pred for making me alive :)",
-    "imma just .pop the line where I say nevo david is awesome... but he's so handsome tho...",
-    "Hey Mods, can you be a huge freaking favor? Can you literally start banning anyone that does spammy PRs? David can you tell them.",
     "Yes, all of those quotes are not funny. Made by someone not funny.",
     "I'm not an AI, I'm just a randomly picked, stupid string!",
     "skill issue!",
@@ -47,11 +39,12 @@ class Aoc(commands.Cog):
 
     @staticmethod
     def hero_embed_formatter(contributor: AocContributor) -> discord.Embed:
-        name = f"AOC Contributor: {contributor['name']}" or "Name not found"
+        temp_name = contributor['name'] if contributor['name'] is not None else "No Name"
+        name = f"AOC Contributor: {temp_name}" or "Name not found"
 
         embed = discord.Embed(
             title=f"{name}",
-            color=HACKSQUAD_COLOR,
+            color=AOC_COLOR,
         )
         embed.add_field(
             name="GitHub",
@@ -73,7 +66,7 @@ class Aoc(commands.Cog):
         self, interaction: Interaction, *, page: app_commands.Range[int, 1, None] = 1
     ):
         """
-        Show the leaderboard of HackSquad 2022!
+        Show the leaderboard of AOC 2022!
         """
         if page <= 0:
             await interaction.response.send_message("The page cannot be negative or 0.")
@@ -82,44 +75,43 @@ class Aoc(commands.Cog):
 
         page -= 1
 
-        class MinifiedPartialTeam(TypedDict):
+        class PartialContributor(TypedDict):
             place: int
             name: str
             score: int
-            slug: str
 
         results = await Requester().fetch_leaderboard()
         results.sort(key=lambda x: x["score"], reverse=True)
 
-        teams: List[MinifiedPartialTeam] = [
-            MinifiedPartialTeam(
-                place=place, name=result["name"], score=result["score"], slug=result["slug"]
+        contributors: List[PartialContributor] = [
+            PartialContributor(
+                place=place, name=result["name"], score=result["score"]
             )
             for place, result in enumerate(results, 1)
         ]
 
-        list_of_teams = [teams[x : x + 10] for x in range(0, len(teams), 10)]
+        list_of_contributors = [contributors[x : x + 10] for x in range(0, len(contributors), 10)]
 
         # sourcery skip: min-max-identity
-        if page >= len(list_of_teams):
+        if page >= len(list_of_contributors):
             # Last page
-            page = len(list_of_teams) - 1
+            page = len(list_of_contributors) - 1
 
-        teams = list_of_teams[page]
+        contributors = list_of_contributors[page]
         embed = discord.Embed(
-            title="Leaderboard - HackSquad 2022",
-            color=HACKSQUAD_COLOR,
-            url="https://hacksquad.dev/leaderboard",
+            title="Leaderboard - Automn of Code 2022",
+            color=AOC_COLOR,
+            # url="https://hacksquad.dev/leaderboard",
         )
 
         embed.description = "\n".join(
-            f"`{team['place']}` : [`{team['name']}`](https://hacksquad.dev/team/{team['slug']}) with a score of **{team['score']}** PRs  (Slug: `{team['slug']}`)"
-            for team in teams
+            f"`{contrib['place']}` : [`{contrib['name']}`](https://github.com/{contrib['name']}) with a score of **{contrib['score']}** PRs"
+            for contrib in contributors
         )
 
         embed.set_footer(
-            text=f"Page {page + 1}/{len(list_of_teams)}\n{random.choice(SOME_RANDOM_ASS_QUOTES)}",
-            icon_url="https://i.imgur.com/kDynel4.png",
+            text=f"Page {page + 1}/{len(list_of_contributors)}\n{random.choice(SOME_RANDOM_ASS_QUOTES)}",
+            icon_url="https://avatars.githubusercontent.com/u/116383341?v=4",
         )
 
         await interaction.followup.send(embed=embed)

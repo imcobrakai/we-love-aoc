@@ -11,7 +11,7 @@ from aoc.utils.objects import Singleton
 
 from .config import ORGANIZATION, g, headers
 
-HACKSQUAD_COLOR = Color.from_rgb(255, 0, 149)
+AOC_COLOR = Color.from_rgb(255, 0, 149)
 
 
 class ResponseError(Exception):
@@ -29,6 +29,12 @@ class AocContributor(TypedDict):
     total_pulls: Optional[int]
     bio: Optional[str]
     # merged_pulls: Optional[int]
+
+class PartialContributor(TypedDict):
+    name: str
+    score: int
+    place: int
+
 
 class AocContributorMini(TypedDict):
     github: str
@@ -86,28 +92,33 @@ class Requester(Singleton):
         # Cached data is invalid if it's been there since 30 minutes
         return invalid_at >= datetime.now()
 
-    # async def fetch_leaderboard(self) -> List[PartialTeam]:
-    #     if self._allow_cache_use("leaderboard"):
-    #         return self._cache["leaderboard"]["data"]
+    async def fetch_leaderboard(self) -> List[PartialContributor]:
+        if self._allow_cache_use("leaderboard"):
+            return self._cache["leaderboard"]["data"]
 
-    #     result = await self._make_request("https://www.hacksquad.dev/api/leaderboard")
-
-    #     final_result = [
-    #         PartialTeam(
-    #             place=None,
-    #             id=info["id"],
-    #             name=info["name"],
-    #             score=info["score"],
-    #             slug=info["slug"],
-    #         )
-    #         for info in result["teams"]
-    #     ]
-    #     self._cache["leaderboard"] = {
-    #         "cached_at": datetime.now(),
-    #         "data": final_result,
-    #         "allowed_time": None,
-    #     }
-    #     return final_result
+        contributors = await self.fetch_contributors_mini()
+        result = list()
+        for contrib in contributors:
+            github = contrib['github']
+            url = f"https://api.github.com/search/issues?q=is:pull-request +author:{github} +org:{ORGANIZATION}"
+            prs = await self._make_request(url)
+            count = prs['total_count']
+            if count > 0:
+                result.append({"github": github, "score": count})
+        final_result = [
+            PartialContributor(
+                place=None,
+                name=info["github"],
+                score=info["score"],
+            )
+            for info in result
+        ]
+        self._cache["leaderboard"] = {
+            "cached_at": datetime.now(),
+            "data": final_result,
+            "allowed_time": None,
+        }
+        return final_result
 
    
     async def fetch_contributor(self, github: str) -> AocContributor:
